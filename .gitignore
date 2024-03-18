@@ -131,3 +131,7 @@ dmypy.json
 *.png
 .vscode/
 app/*.log
+
+audio.mp3
+.envrc
+*.txt

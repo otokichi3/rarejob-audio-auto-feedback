@@ -1,10 +1,12 @@
 import requests
 import os
 from bs4 import BeautifulSoup
-from google.cloud import speech
+from openai import OpenAI
+
+FILENAME = "audio.mp3"
 
 
-def get_audio_url():
+def get_audio_content():
     session = requests.Session()
 
     # ログインする
@@ -27,34 +29,29 @@ def get_audio_url():
     soup_detail = BeautifulSoup(res_detail.text, "html.parser")
     audio_data = soup_detail.find("audio", class_="audioData")
 
-    return audio_data.get("src")
+    # mp3をダウンロードする
+    content = session.get(audio_data.get("src")).content
+
+    with open(FILENAME, "wb") as f:
+        f.write(content)
+
+    with open(FILENAME, "rb") as f:
+        client = OpenAI()
+        transcription = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=f,
+            response_format="verbose_json",
+            timestamp_granularities=["segment"],
+        )
+        for s in transcription.segments:
+            print(s["text"])
+    # TODO text to Gemini API to improve student's English
 
 
-def audio_to_text(url):
-    ######################################
-    # ここから Speech-to-Text
-    # https://cloud.google.com/speech-to-text/docs/transcribe-client-libraries#make_an_audio_transcription_request
-    ######################################
-    # Instantiates a client
-    client = speech.SpeechClient()
-
-    audio = speech.RecognitionAudio(uri=url)
-
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=16000,
-        language_code="en-US",
-    )
-
-    # Detects speech in the audio file
-    response = client.recognize(config=config, audio=audio)
-
-    for result in response.results:
-        print(f"Transcript: {result.alternatives[0].transcript}")
-
+"""
+Please identify the speakers and add "tutor:" to the teacher's utterances and "you:" to the student's utterances for the following text.
+TODO: add suggestions
+"""
 
 if __name__ == "__main__":
-    audio_url = get_audio_url()
-    print(audio_url)
-    audio_to_text(audio_url)
-    exit()
+    content = get_audio_content()
