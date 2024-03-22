@@ -8,8 +8,13 @@ from openai import OpenAI
 FILENAME = "audio.mp3"
 
 
+def get_audio_text(test=False):
+    if test:
+        text = ""
+        with open("transcription_short.txt", "r") as f:
+            text = f.read()
+        return text
 
-def get_audio_text():
     session = requests.Session()
 
     # ログインする
@@ -58,26 +63,27 @@ def get_chat_response(chat: ChatSession, prompt: str) -> str:
         text_response.append(chunk.text)
     return "".join(text_response)
 
+
 def get_imporved_sentences(text: str) -> str:
     vertexai.init(project=os.getenv("PROJECT_ID"), location=os.getenv("LOCATION"))
     model = GenerativeModel("gemini-1.0-pro")
     chat = model.start_chat()
 
-    prompt_identified = "Please identify the speakers and add \"tutor:\" to the teacher's utterances and add \"you:\" to the student's utterances for the following text."
+    prompt_identified = 'Identify the speakers and add "tutor:" to the teacher\'s utterances and add "you:" to the student\'s utterances for the following text.'
     prompt_identified = prompt_identified + "\n" + "---" + "\n"
     prompt_identified = prompt_identified + text
     text_identified = get_chat_response(chat, prompt_identified)
 
-    prompt_improved = "Please improve the following sentences to be more natural with reason for revision. Please keep an original sentence while appending an improved sentence in each line."
+    prompt_improved = """"Make the following sentences natural and complete English with reason for change using following format:
+    [name]: [original sentence] ([improved sentence] Reason:[Reason])
+    """
     prompt_improved = prompt_improved + "\n" + "---" + "\n"
     prompt_improved = prompt_improved + text_identified
     return get_chat_response(chat, prompt_improved)
 
+
 if __name__ == "__main__":
-    text = get_audio_text()
-    # text = ""
-    # with open("transcription_short.txt", "r") as f:
-    #     text = f.read()
+    text = get_audio_text(test=False)
     res = get_imporved_sentences(text)
     print(res)
-
+    # TODO: どこかに feedback text を保存する
